@@ -310,35 +310,35 @@ func TestDecodeError_PositionAfterComment(t *testing.T) {
 		doc         string
 		expectedRow int
 		expectedCol int
-		errContains string
+		expectedStr string
 	}{
 		{
 			desc:        "invalid key after comment",
 			doc:         "# comment\n= \"value\"",
 			expectedRow: 2,
 			expectedCol: 1,
-			errContains: "invalid character",
+			expectedStr: "1| # comment\n2| = \"value\"\n | ~ invalid character at start of key: =",
 		},
 		{
 			desc:        "invalid key after two comments",
 			doc:         "# one\n# two\n= \"value\"",
 			expectedRow: 3,
 			expectedCol: 1,
-			errContains: "invalid character",
+			expectedStr: "1| # one\n2| # two\n3| = \"value\"\n | ~ invalid character at start of key: =",
 		},
 		{
 			desc:        "invalid key after key-value pair",
 			doc:         "a = 1\n= 2",
 			expectedRow: 2,
 			expectedCol: 1,
-			errContains: "invalid character",
+			expectedStr: "1| a = 1\n2| = 2\n | ~ invalid character at start of key: =",
 		},
 		{
 			desc:        "invalid key after blank line",
 			doc:         "a = 1\n\n= 2",
 			expectedRow: 3,
 			expectedCol: 1,
-			errContains: "invalid character",
+			expectedStr: "1| a = 1\n2|\n3| = 2\n | ~ invalid character at start of key: =",
 		},
 	}
 
@@ -363,9 +363,7 @@ func TestDecodeError_PositionAfterComment(t *testing.T) {
 				t.Errorf("col: got %d, want %d (error: %s)", col, e.expectedCol, derr.String())
 			}
 
-			if !strings.Contains(derr.Error(), e.errContains) {
-				t.Errorf("error %q does not contain %q", derr.Error(), e.errContains)
-			}
+			assert.Equal(t, e.expectedStr, derr.String())
 		})
 	}
 }
