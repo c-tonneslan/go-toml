@@ -301,6 +301,75 @@ OtherMissing = 1
 	assert.Equal(t, 2, len(strictErr.Unwrap()))
 }
 
+func TestDecodeError_PositionAfterComment(t *testing.T) {
+	// Regression test for https://github.com/pelletier/go-toml/issues/1047
+	// Error positions must be correct when the error occurs after comments or
+	// other content that was already scanned past.
+	examples := []struct {
+		desc        string
+		doc         string
+		expectedRow int
+		expectedCol int
+		errContains string
+	}{
+		{
+			desc:        "invalid key after comment",
+			doc:         "# comment\n= \"value\"",
+			expectedRow: 2,
+			expectedCol: 1,
+			errContains: "invalid character",
+		},
+		{
+			desc:        "invalid key after two comments",
+			doc:         "# one\n# two\n= \"value\"",
+			expectedRow: 3,
+			expectedCol: 1,
+			errContains: "invalid character",
+		},
+		{
+			desc:        "invalid key after key-value pair",
+			doc:         "a = 1\n= 2",
+			expectedRow: 2,
+			expectedCol: 1,
+			errContains: "invalid character",
+		},
+		{
+			desc:        "invalid key after blank line",
+			doc:         "a = 1\n\n= 2",
+			expectedRow: 3,
+			expectedCol: 1,
+			errContains: "invalid character",
+		},
+	}
+
+	for _, e := range examples {
+		t.Run(e.desc, func(t *testing.T) {
+			var v interface{}
+			err := Unmarshal([]byte(e.doc), &v)
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+
+			var derr *DecodeError
+			if !errors.As(err, &derr) {
+				t.Fatalf("error not a *DecodeError: %T: %v", err, err)
+			}
+
+			row, col := derr.Position()
+			if row != e.expectedRow {
+				t.Errorf("row: got %d, want %d (error: %s)", row, e.expectedRow, derr.String())
+			}
+			if col != e.expectedCol {
+				t.Errorf("col: got %d, want %d (error: %s)", col, e.expectedCol, derr.String())
+			}
+
+			if !strings.Contains(derr.Error(), e.errContains) {
+				t.Errorf("error %q does not contain %q", derr.Error(), e.errContains)
+			}
+		})
+	}
+}
+
 func ExampleDecodeError() {
 	doc := `name = 123__456`
 

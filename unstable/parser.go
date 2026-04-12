@@ -3,6 +3,7 @@ package unstable
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"unicode"
 
 	"github.com/pelletier/go-toml/v2/internal/characters"
@@ -83,10 +84,14 @@ func (p *Parser) rangeOfToken(token, rest []byte) Range {
 }
 
 // subsliceOffset returns the byte offset of subslice b within p.data.
-// b must be a suffix (tail) of p.data.
+// b must be a subslice of p.data (sharing the same backing array).
 func (p *Parser) subsliceOffset(b []byte) int {
-	// b is a suffix of p.data, so its offset is len(p.data) - len(b)
-	return len(p.data) - len(b)
+	if len(b) == 0 {
+		return 0
+	}
+	dataPtr := reflect.ValueOf(p.data).Pointer()
+	subPtr := reflect.ValueOf(b).Pointer()
+	return int(subPtr - dataPtr)
 }
 
 // Raw returns the slice corresponding to the bytes in the given range.
